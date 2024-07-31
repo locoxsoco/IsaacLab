@@ -27,6 +27,7 @@ parser.add_argument(
     "--distributed", action="store_true", default=False, help="Run training with multiple GPUs or nodes."
 )
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -50,6 +51,13 @@ from datetime import datetime
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.torch_runner import Runner
+from rl_games.algos_torch import model_builder
+from learning import pmp4setsip_continuous
+from learning import pmp4setsip_players
+from learning import pmp4setsip_models
+from learning import pmp4setsip_network_builder
+
+from omni.isaac.lab.utils.assets import retrieve_file_path
 
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
@@ -77,6 +85,14 @@ def main():
     log_root_path = os.path.join("logs", "rl_games", agent_cfg["params"]["config"]["name"])
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
+
+    # find checkpoint
+    if args_cli.checkpoint is not None:
+        resume_path = retrieve_file_path(args_cli.checkpoint)
+        agent_cfg["params"]["load_checkpoint"] = True
+        agent_cfg["params"]["load_path"] = resume_path
+        print(f"[INFO]: Loading model checkpoint from: {agent_cfg['params']['load_path']}")
+    
     # specify directory for logging runs
     log_dir = agent_cfg["params"]["config"].get("full_experiment_name", datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     # set directory into agent config
@@ -135,6 +151,13 @@ def main():
     agent_cfg["params"]["config"]["num_actors"] = env.unwrapped.num_envs
     # create runner from rl-games
     runner = Runner(IsaacAlgoObserver())
+
+    # register new AMP network builder and agent
+    runner.algo_factory.register_builder('pmp4setsip_continuous', lambda **kwargs : pmp4setsip_continuous.PMP4SetsIPAgent(**kwargs))
+    runner.player_factory.register_builder('pmp4setsip_continuous', lambda **kwargs : pmp4setsip_players.PMP4SetsIPPlayerContinuous(**kwargs))
+    model_builder.register_model('continuous_pmp4setsip', lambda network, **kwargs : pmp4setsip_models.ModelPMP4SetsIPContinuous(network))
+    model_builder.register_network('pmp4setsip', lambda **kwargs : pmp4setsip_network_builder.PMP4SetsIPBuilder())
+
     runner.load(agent_cfg)
 
     # set seed of the env

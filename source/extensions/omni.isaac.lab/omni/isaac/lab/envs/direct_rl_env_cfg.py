@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+import numpy as np
 from dataclasses import MISSING
 
 from omni.isaac.lab.scene import InteractiveSceneCfg
@@ -119,3 +120,4 @@ class DirectRLEnvCfg:
 
     Please refer to the :class:`omni.isaac.lab.utils.noise.NoiseModel` class for more details.
     """
+    clip_observations: float | None = np.Inf

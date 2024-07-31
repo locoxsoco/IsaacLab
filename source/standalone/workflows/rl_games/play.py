@@ -45,6 +45,11 @@ import torch
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.player import BasePlayer
 from rl_games.torch_runner import Runner
+from rl_games.algos_torch import model_builder
+from learning import pmp4setsip_continuous
+from learning import pmp4setsip_players
+from learning import pmp4setsip_models
+from learning import pmp4setsip_network_builder
 
 from omni.isaac.lab.utils.assets import retrieve_file_path
 
@@ -105,6 +110,13 @@ def main():
     agent_cfg["params"]["config"]["num_actors"] = env.unwrapped.num_envs
     # create runner from rl-games
     runner = Runner()
+
+    # register new AMP network builder and agent
+    runner.algo_factory.register_builder('pmp4setsip_continuous', lambda **kwargs : pmp4setsip_continuous.PMP4SetsIPAgent(**kwargs))
+    runner.player_factory.register_builder('pmp4setsip_continuous', lambda **kwargs : pmp4setsip_players.PMP4SetsIPPlayerContinuous(**kwargs))
+    model_builder.register_model('continuous_pmp4setsip', lambda network, **kwargs : pmp4setsip_models.ModelPMP4SetsIPContinuous(network))
+    model_builder.register_network('pmp4setsip', lambda **kwarg : pmp4setsip_network_builder.PMP4SetsIPBuilder())
+
     runner.load(agent_cfg)
     # obtain the agent from the runner
     agent: BasePlayer = runner.create_player()

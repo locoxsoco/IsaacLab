@@ -170,6 +170,11 @@ class DirectRLEnv(gym.Env):
 
         # setup the action and observation spaces for Gym
         self._configure_gym_env_spaces()
+        
+        # allocate buffers
+        self.obs_buf = {"policy": torch.zeros(
+            (self.num_envs, self.num_observations), device=self.device, dtype=torch.float)}
+        self.obs_dict = {}
 
         # setup noise cfg for adding action and observation noise
         if self.cfg.action_noise_model:
@@ -338,6 +343,9 @@ class DirectRLEnv(gym.Env):
         # note: we apply no noise to the state space (since it is used for critic networks)
         if self.cfg.observation_noise_model:
             self.obs_buf["policy"] = self._observation_noise_model.apply(self.obs_buf["policy"])
+        
+        # Extra post physics step processes
+        self.post_physics_step()
 
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras
@@ -506,6 +514,8 @@ class DirectRLEnv(gym.Env):
         if self.num_states > 0:
             self.single_observation_space["critic"] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_states,))
             self.state_space = gym.vector.utils.batch_space(self.single_observation_space["critic"], self.num_envs)
+            
+        self.clip_obs = self.cfg.clip_observations
 
     def _reset_idx(self, env_ids: Sequence[int]):
         """Reset environments based on specified indices.
@@ -614,3 +624,23 @@ class DirectRLEnv(gym.Env):
         set their visibility into the stage.
         """
         raise NotImplementedError(f"Debug visualization is not implemented for {self.__class__.__name__}.")
+    
+    def reset_done(self):
+        """Reset the environment.
+        Returns:
+            Observation dictionary, indices of environments being reset
+        """
+        done_env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+        if len(done_env_ids) > 0:
+            self._reset_idx(done_env_ids)
+
+        self.obs_dict["obs"] = torch.clamp(self.obs_buf["policy"], -self.clip_obs, self.clip_obs).to(self.device)
+
+        # asymmetric actor-critic
+        if self.num_states > 0:
+            self.obs_dict["states"] = self.get_state()
+
+        return self.obs_dict, done_env_ids
+    
+    def post_physics_step(self):
+        pass

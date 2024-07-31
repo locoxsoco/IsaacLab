@@ -214,11 +214,21 @@ class RlGamesVecEnvWrapper(IVecEnv):
 
     def get_env_info(self) -> dict:
         """Returns the Gym spaces for the environment."""
-        return {
-            "observation_space": self.observation_space,
-            "action_space": self.action_space,
-            "state_space": self.state_space,
-        }
+        info = {}
+        info['action_space'] = self.action_space
+        info['observation_space'] = self.observation_space
+        
+        # TODO: Fix self.env.env
+        if hasattr(self.env.env, "pmp4setsip_observation_space"):
+            info['pmp4setsip_observation_space'] = self.env.env.pmp4setsip_observation_space
+
+        if self.env.env.num_states > 0:
+            info['state_space'] = self.state_space
+            print(info['action_space'], info['observation_space'], info['state_space'])
+        else:
+            print(info['action_space'], info['observation_space'])
+
+        return info
 
     """
     Operations - MDP
