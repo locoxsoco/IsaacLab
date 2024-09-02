@@ -43,7 +43,7 @@ class HumanoidWithHandsEnvCfg(DirectRLEnvCfg):
     left_hand_dof_name = "left_hand"
     key_body_names = ["right_palm", "left_palm", "right_foot", "left_foot"]
     contact_body_names = ["right_foot", "left_foot"]
-    mocap_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 32, 33, 34, 58, 59, 60, 65, 66, 67, 9, 35, 61, 68, 10, 11, 12, 36, 37, 38, 62, 63, 64, 69, 70, 71, 13, 17, 24, 28, 39, 43, 50, 54, 14, 18, 21, 25, 29, 40, 44, 47, 51, 55, 15, 19, 22, 26, 30, 41, 45, 48, 52, 56, 16, 20, 23, 27, 31, 42, 46, 49, 53, 57]
+    # mocap_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 32, 33, 34, 58, 59, 60, 65, 66, 67, 9, 35, 61, 68, 10, 11, 12, 36, 37, 38, 62, 63, 64, 69, 70, 71, 13, 17, 24, 28, 39, 43, 50, 54, 14, 18, 21, 25, 29, 40, 44, 47, 51, 55, 15, 19, 22, 26, 30, 41, 45, 48, 52, 56, 16, 20, 23, 27, 31, 42, 46, 49, 53, 57]
     DOF_OFFSETS_MPL = [0,  3,  6,  9, 12, 15, 18,
                        19, 20 , 21, 22,
                        25, 28, 31, 34,
@@ -51,6 +51,7 @@ class HumanoidWithHandsEnvCfg(DirectRLEnvCfg):
 
     # scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
+    # scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=512, env_spacing=4.0, replicate_physics=True)
 
     # reset
     contact_bodies = ["right_foot", "left_foot"]
@@ -88,10 +89,6 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         self.action_scale = self.cfg.action_scale
 
         self._humanoid_root_states = self.humanoid_with_hands.data.default_root_state
-        self.root_pos = self.humanoid_with_hands.data.default_root_state[:, 0:3]
-        self.root_rot = self.humanoid_with_hands.data.default_root_state[:, 3:7]
-        self.root_vel = self.humanoid_with_hands.data.default_root_state[:, 7:10]
-        self._rigid_body_pos = self.humanoid_with_hands.data.body_pos_w
         self.joint_limits = self.humanoid_with_hands.data.joint_limits
         self.joint_pos = self.humanoid_with_hands.data.joint_pos
         self.joint_vel = self.humanoid_with_hands.data.joint_vel
@@ -122,7 +119,7 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         self._local_root_obs = False
         self._termination_height = 0.15
 
-        self.mocap_indices = self.cfg.mocap_indices
+        # self.mocap_indices = self.cfg.mocap_indices
         
         self.simulation_cfg = self.cfg.sim
 
@@ -196,11 +193,11 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
     
     def _get_observations(self) -> dict:
-        key_body_pos = self._rigid_body_pos[:, self._key_body_ids]
+        key_body_pos = self.humanoid_with_hands.data.body_pos_w[:, self._key_body_ids]
         obs = build_pmp4setsip_observations(
-            self._humanoid_root_states,
-            self.joint_pos,
-            self.joint_vel,
+            self.humanoid_with_hands.data.root_state_w,
+            self.humanoid_with_hands.data.joint_pos,
+            self.humanoid_with_hands.data.joint_vel,
             key_body_pos,
             self._local_root_obs,
         )
@@ -211,23 +208,18 @@ class HumanoidWithHandsEnv(DirectRLEnv):
      total_reward = compute_rewards(
          self.cfg.rew_scale_speed,
          self.cfg.rew_scale_heading,
-         self.root_pos,
-         self.root_rot,
-         self.root_vel,
+         self.humanoid_with_hands.data.root_pos_w,
+         self.humanoid_with_hands.data.root_quat_w,
+         self.humanoid_with_hands.data.root_vel_w,
          self.target_pos,
      )
      return total_reward
     
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
-        # # TODO: Test if necessary -> It was necessary
-        self._rigid_body_pos = self.humanoid_with_hands.data.body_pos_w
-        # self.joint_pos = self.humanoid_with_hands.data.joint_pos
-        # self.joint_vel = self.humanoid_with_hands.data.joint_vel
-
         reset_buf, self._terminate_buf[:] = compute_humanoid_reset(
             self.episode_length_buf,
             self._contact_body_ids,
-            self._rigid_body_pos,
+            self.humanoid_with_hands.data.body_pos_w,
             self.max_episode_length,
             self._termination_height,
         )
@@ -248,7 +240,8 @@ class HumanoidWithHandsEnv(DirectRLEnv):
 
         self.humanoid_with_hands.write_root_pose_to_sim(self._humanoid_root_states[env_ids, :7], env_ids)
         self.humanoid_with_hands.write_root_velocity_to_sim(self._humanoid_root_states[env_ids, 7:], env_ids)
-        self.humanoid_with_hands.write_joint_state_to_sim(dof_pos, dof_vel, self.mocap_indices, env_ids)
+        # self.humanoid_with_hands.write_joint_state_to_sim(dof_pos, dof_vel, self.mocap_indices, env_ids)
+        self.humanoid_with_hands.write_joint_state_to_sim(dof_pos, dof_vel, env_ids=env_ids)
         return
     
     def _reset_ref_state_init(self, env_ids):
@@ -336,6 +329,9 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         return
 
     def _action_to_pd_targets(self, action):
+        # print(f'self._pd_action_offset: {self._pd_action_offset}')
+        # print(f'self._pd_action_scale: {self._pd_action_scale}')
+        # print(f'action: {action}')
         pd_tar = self._pd_action_offset[self._actuator_joints_ids] + self._pd_action_scale[self._actuator_joints_ids] * action
         return pd_tar
 
@@ -344,8 +340,9 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         self.cur_targets = self._action_to_pd_targets(self.actions)
     
     def _apply_action(self) -> None:
-        # print(f'cur_targets: {self.cur_targets[0]}')
-        self.humanoid_with_hands.set_joint_effort_target(self.cur_targets, joint_ids=self._actuator_joints_ids)
+        # print(f'cur_targets: {len(self.cur_targets[0])}')
+        # print(f'_actuator_joints_ids: {len(self._actuator_joints_ids)}')
+        self.humanoid_with_hands.set_joint_position_target(self.cur_targets, joint_ids=self._actuator_joints_ids)
     
     @property
     def pmp4setsip_observation_space(self):
@@ -453,10 +450,10 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         return
 
     def _compute_pmp4setsip_observations(self, env_ids=None):
-        key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
+        key_body_pos = self.humanoid_with_hands.data.body_pos_w[:, self._key_body_ids]
         if env_ids is None:
             self._curr_pmp4setsip_obs_buf[:, 0:199] = build_pmp4setsip_observations(
-                self._humanoid_root_states,
+                self.humanoid_with_hands.data.root_state_w,
                 self.humanoid_with_hands.data.joint_pos,
                 self.humanoid_with_hands.data.joint_vel,
                 key_body_pos,
@@ -467,7 +464,7 @@ class HumanoidWithHandsEnv(DirectRLEnv):
         else:
             self._curr_pmp4setsip_obs_buf[env_ids, 0:199] = (
                 build_pmp4setsip_observations(
-                    self._humanoid_root_states[env_ids],
+                    self.humanoid_with_hands.data.root_state_w[env_ids],
                     self.humanoid_with_hands.data.joint_pos[env_ids],
                     self.humanoid_with_hands.data.joint_vel[env_ids],
                     key_body_pos[env_ids],
@@ -497,31 +494,31 @@ class HumanoidWithHandsEnv(DirectRLEnv):
 
 @torch.jit.script
 def calc_heading(
-    q: torch.Tensor
+    q_wxyz: torch.Tensor
 ):
     # calculate heading direction from quaternion
     # the heading is the direction on the xy plane
     # q must be normalized
-    ref_dir = torch.zeros_like(q[..., 0:3])
+    ref_dir = torch.zeros_like(q_wxyz[..., 1:4])
     ref_dir[..., 0] = 1
-    rot_dir = quat_rotate(q, ref_dir)
+    rot_dir = quat_rotate(q_wxyz, ref_dir)
 
     heading = torch.atan2(rot_dir[..., 1], rot_dir[..., 0])
     return heading
 
 @torch.jit.script
 def calc_heading_quat(
-    q: torch.Tensor
+    q_wxyz: torch.Tensor
 ):
     # calculate heading rotation from quaternion
     # the heading is the direction on the xy plane
     # q must be normalized
-    heading = calc_heading(q)
-    axis = torch.zeros_like(q[..., 0:3])
+    heading = calc_heading(q_wxyz)
+    axis = torch.zeros_like(q_wxyz[..., 1:4])
     axis[..., 2] = 1
 
-    heading_q = quat_from_angle_axis(heading, axis)
-    return heading_q
+    heading_q_wxyz = quat_from_angle_axis(heading, axis)
+    return heading_q_wxyz
 
 @torch.jit.script
 def calc_heading_quat_inv(

@@ -1124,11 +1124,11 @@ class PMP4SetsIPAgent(common_agent.CommonAgent):
                     + (1.0 - sigma_left) * disc_r_left_hand
                 )
             )
-            print(f'disc_r[0,0]: \t\t{disc_r[0,0]}')
-            print(f'disc_r_upper[0,0]: \t{disc_r_upper[0,0]} \tdisc_r_lower[0,0]: \t{disc_r_lower[0,0]}')
-            print(f'sigma_right[0,0]: \t{sigma_right[0,0]} \tdisc_r_ip_right_hand[0,0]: \t{disc_r_ip_right_hand[0,0]} \tdisc_r_right_hand[0,0]: \t{disc_r_right_hand[0,0]}')
-            print(f'sigma_left[0,0]: \t{sigma_left[0,0]} \tdisc_r_ip_left_hand[0,0]: \t{disc_r_ip_left_hand[0,0]} \tdisc_r_left_hand[0,0]: \t{disc_r_left_hand[0,0]}')
-            print(f'------------------------------------')
+            # print(f'disc_r[0,0]: \t\t{disc_r[0,0]}')
+            # print(f'disc_r_upper[0,0]: \t{disc_r_upper[0,0]} \tdisc_r_lower[0,0]: \t{disc_r_lower[0,0]}')
+            # print(f'sigma_right[0,0]: \t{sigma_right[0,0]} \tdisc_r_ip_right_hand[0,0]: \t{disc_r_ip_right_hand[0,0]} \tdisc_r_right_hand[0,0]: \t{disc_r_right_hand[0,0]}')
+            # print(f'sigma_left[0,0]: \t{sigma_left[0,0]} \tdisc_r_ip_left_hand[0,0]: \t{disc_r_ip_left_hand[0,0]} \tdisc_r_left_hand[0,0]: \t{disc_r_left_hand[0,0]}')
+            # print(f'------------------------------------')
             # print(f'sigma_right: {sigma_right.shape} disc_r_right_hand: {disc_r_right_hand.shape} disc_r_ip_right_hand: {disc_r_ip_right_hand.shape} disc_r: {disc_r.shape}')
         return disc_r
 

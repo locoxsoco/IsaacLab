@@ -153,6 +153,12 @@ class MotionLib():
 
         local_rot = slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
         dof_pos = self._local_rotation_to_dof(local_rot)
+        # print(f'dof_pos.shape: {dof_pos.shape}')
+        # print(f'dof_pos.dof_vel: {dof_vel.shape}')
+        # Depth-First Ordering Breath-First Ordering in dof indexing
+        dfidx_to_bfidx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 32, 33, 34, 58, 59, 60, 65, 66, 67, 9, 35, 61, 68, 10, 11, 12, 36, 37, 38, 62, 63, 64, 69, 70, 71, 13, 17, 24, 28, 39, 43, 50, 54, 14, 18, 21, 25, 29, 40, 44, 47, 51, 55, 15, 19, 22, 26, 30, 41, 45, 48, 52, 56, 16, 20, 23, 27, 31, 42, 46, 49, 53, 57]
+        dof_pos = dof_pos[..., dfidx_to_bfidx]
+        dof_vel = dof_vel[..., dfidx_to_bfidx]
 
         return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos
 
